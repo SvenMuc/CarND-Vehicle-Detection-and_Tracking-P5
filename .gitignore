@@ -1,3 +1,7 @@
 workspace.xml
 __pycache__
 .idea/dictionaries
+output_converted
+output_images
+train_data
+train_data_debug
