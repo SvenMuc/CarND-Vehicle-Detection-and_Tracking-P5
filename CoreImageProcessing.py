@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from moviepy.editor import VideoFileClip
 from skimage.feature import hog
-# TODO: from Calibration import *
 
 
 class CoreImageProcessing:
@@ -20,13 +19,14 @@ class CoreImageProcessing:
         """ Initialization method. """
 
     @staticmethod
-    def show_image(image, title='', cmap=None, show=False):
+    def show_image(image, title='', cmap=None, axis='off', show=False):
         """ Show a single image in a matplotlib figure.
 
         :param image:  Image to be shown.
         :param title:  Image title.
         :param cmap:   Colormap (most relevant: 'gray', 'jet', 'hsv')
                        For supported colormaps see: https://matplotlib.org/examples/color/colormaps_reference.html
+        :param axis:   Activates 'on' or deactivates 'off' the x- and y-axis.
         :param show:   If true, the image will be shown immediately. Otherwise `plt.show()` shall be called at a later
                        stage.
         """
@@ -35,13 +35,13 @@ class CoreImageProcessing:
         fig.tight_layout()
         ax.imshow(image, cmap=cmap)
         ax.set_title(title)
-        ax.axis('off')
+        ax.axis(axis)
 
         if show:
             plt.show()
 
     @staticmethod
-    def show_images(figsize, rows, images, titles=[], cmaps=[], fig_title='', show=False):
+    def show_images(figsize, rows, images, titles=[], cmaps=[], fig_title='', axis='off', show=False):
         """ Show a single image in a matplotlib figure.
 
         :param figsize:   Size of the image in inch (width, height).
@@ -51,6 +51,7 @@ class CoreImageProcessing:
         :param cmaps:     1D-Array of colormaps (most relevant: 'gray', 'jet', 'hsv'). Use '' to apply default cmap.
                           For supported colormaps see: https://matplotlib.org/examples/color/colormaps_reference.html
         :param fig_title: Figure title.
+        :param axis:      Activates 'on' or deactivates 'off' the x- and y-axis.
         :param show:      If true, the image will be shown immediately. Otherwise `plt.show()` shall be called at a
                           later stage.
         """
@@ -74,7 +75,7 @@ class CoreImageProcessing:
                     ax.imshow(images[i], cmap=cmaps[i])
 
                 ax.set_title(titles[i])
-                ax.axis('off')
+                ax.axis(axis)
         else:
             # plot multiple rows
             idx = 0
@@ -86,7 +87,7 @@ class CoreImageProcessing:
                         axarr[r][c].imshow(images[idx], cmap=cmaps[idx])
 
                     axarr[r][c].set_title(titles[idx])
-                    axarr[r][c].axis('off')
+                    axarr[r][c].axis(axis)
                     idx += 1
 
         if show:
@@ -285,19 +286,20 @@ class CoreImageProcessing:
 
         return hist
 
-    def color_histogram(self, image, nb_bins=32, bins_range=(0, 256)):
+    def color_histogram(self, image, nb_bins=32, features_vector_only=True):
         """ Calculates the histogram for each individual channel.
 
         :param image:       3 channel input image (e.g. RGB, HSV, YUV, LUV, etc.)
-        :param nb_bins:     Number of bins.
-        :param bins_range:  Range of each bin.
+        :param nb_bin:      Number of bins.
+        :param features_vector_only: If true the function only returns the histogram feature set.
 
-        :return: Return the individual channel histograms, bin_centers and feature vectors.
+        :return: Return the individual channel histograms, bin_centers and feature vectors. If
+                 `hist_features_only == True`the function returns the feature vector only
         """
 
-        hist_c0 = np.histogram(image[:, :, 0], bins=nb_bins, range=bins_range)
-        hist_c1 = np.histogram(image[:, :, 1], bins=nb_bins, range=bins_range)
-        hist_c2 = np.histogram(image[:, :, 2], bins=nb_bins, range=bins_range)
+        hist_c0 = np.histogram(image[:, :, 0], bins=nb_bins)
+        hist_c1 = np.histogram(image[:, :, 1], bins=nb_bins)
+        hist_c2 = np.histogram(image[:, :, 2], bins=nb_bins)
 
         # generate bin centers
         bin_edges = hist_c0[1]
@@ -306,43 +308,33 @@ class CoreImageProcessing:
         # concatenate the histograms into a single feature vector
         hist_features = np.concatenate((hist_c0[0], hist_c1[0], hist_c2[0]))
 
-        return hist_c0, hist_c1, hist_c2, bin_centers, hist_features
+        if features_vector_only:
+            return hist_features
+        else:
+            return hist_c0, hist_c1, hist_c2, bin_centers, hist_features
 
-    def bin_spatial(self, img_rgb, color_space='RGB', size=(32, 32)):
-        """ Creates a 1-dimensional feature vector of an spatially binned image. In case of `color_space` is defined
-        it converts the image into that color space before applying the spacial binning.
+    def bin_spatial(self, img, size=(32, 32)):
+        """ Creates a 1-dimensional feature vector of an spatially binned 3-channel image.
 
-        :param img_rgb:     Input RGB image.
-        :param color_space: Applied color space (RGB, HSV, LUV, HLS, YUV or YCrCb).
-        :param size:        Image size applied for the feature vector.
+        :param img:         3 channel input image.
+        :param size:        Spatial image size applied for the feature vector.
 
         :return: Returns the 1-dimensional spatial image feature vector.
         """
-        # convert image to new color space (if specified)
-        if color_space != 'RGB':
-            if color_space == 'HSV':
-                feature_image = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
-            elif color_space == 'LUV':
-                feature_image = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LUV)
-            elif color_space == 'HLS':
-                feature_image = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HLS)
-            elif color_space == 'YUV':
-                feature_image = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2YUV)
-            elif color_space == 'YCrCb':
-                feature_image = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2YCrCb)
-        else:
-            feature_image = np.copy(img_rgb)
+
+        img_feature = np.copy(img)
 
         # create the 1-dimensional feature vector
-        return cv2.resize(feature_image, size).ravel()
+        return cv2.resize(img_feature, size).ravel()
 
-    def hog_features(self, img_gray, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=True):
-        """ Calculates the HOG (Histogram of Oriented Gradients) features and the HOG image in `vis` is set to True.
+    def hog_features_single_channel(self, img_channel, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=True):
+        """ Calculates the HOG (Histogram of Oriented Gradients) features and the HOG image if `vis` is set to True on
+        a single channel image.
 
         Further details about the algo can be found here:
           http://lear.inrialpes.fr/people/triggs/pubs/Dalal-cvpr05.pdf
 
-        :param img_gray:        Input gray image
+        :param img_channel:     Single channel input image
         :param orient:          Number of orientation bins.
         :param pix_per_cell:    Size of a cell in pixels.
         :param cell_per_block:  Number of cells in each block.
@@ -355,7 +347,7 @@ class CoreImageProcessing:
 
         if vis:
             # return hog features and hog image
-            features, img_hog = hog(img_gray, orientations=orient,
+            features, img_hog = hog(img_channel, orientations=orient,
                                     pixels_per_cell=(pix_per_cell, pix_per_cell),
                                     cells_per_block=(cell_per_block, cell_per_block),
                                     transform_sqrt=False,
@@ -364,12 +356,56 @@ class CoreImageProcessing:
             return features, img_hog
         else:
             # return hog features only
-            features = hog(img_gray, orientations=orient,
+            features = hog(img_channel, orientations=orient,
                            pixels_per_cell=(pix_per_cell, pix_per_cell),
                            cells_per_block=(cell_per_block, cell_per_block),
                            transform_sqrt=False,
                            visualise=False,
                            feature_vector=feature_vec)
+            return features
+
+    def hog_features(self, img, channel, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=True):
+        """ Calculates the HOG (Histogram of Oriented Gradients) features and the HOG image in `vis` is set to True.
+
+        Further details about the algo can be found here:
+          http://lear.inrialpes.fr/people/triggs/pubs/Dalal-cvpr05.pdf
+
+        :param img:             Input image
+        :param channel:         Image channel. Can be 0, 1, 2 or 'ALL'.
+        :param orient:          Number of orientation bins.
+        :param pix_per_cell:    Size of a cell in pixels.
+        :param cell_per_block:  Number of cells in each block.
+        :param vis:             If true return the HOG image.
+        :param feature_vec:     Return the data as a feature vector by calling .ravel() on the result just
+                                before returning.
+
+        :return: Returns the HOG features and if `vis=True` the HOG features and the HOG image.
+        """
+
+        if vis:
+            # return hog features and hog image
+            if channel == 'ALL':
+                features = []
+                imgs_hog = []
+                for ch in range(img.shape[2]):
+                    feature, img_hog = self.hog_features_single_channel(img[:, :, ch], orient=orient, pix_per_cell=pix_per_cell,
+                                                                        cell_per_block=cell_per_block, vis=True, feature_vec=True)
+                    features.append(feature)
+                    imgs_hog.append(img_hog)
+            else:
+                features, imgs_hog = self.hog_features_single_channel(img[:, :, channel], orient=orient, pix_per_cell=pix_per_cell,
+                                                            cell_per_block=cell_per_block, vis=True, feature_vec=True)
+            return features, img_hog
+        else:
+            # return hog features only
+            if channel == 'ALL':
+                features = []
+                for ch in range(img.shape[2]):
+                    features.append((self.hog_features_single_channel(img[:, :, ch], orient=orient, pix_per_cell=pix_per_cell,
+                                                                      cell_per_block=cell_per_block, vis=False, feature_vec=True)))
+            else:
+                features = self.hog_features_single_channel(img[:, :, channel], orient=orient, pix_per_cell=pix_per_cell,
+                                                            cell_per_block=cell_per_block, vis=False, feature_vec=True)
             return features
 
     @staticmethod
@@ -451,7 +487,7 @@ def test_color_histogram(img_rgb):
     """
 
     cip = CoreImageProcessing()
-    rh, gh, bh, bincen, feature_vec = cip.color_histogram(img_rgb, nb_bins=32, bins_range=(0, 256))
+    rh, gh, bh, bincen, feature_vec = cip.color_histogram(img_rgb, nb_bins=32, bins_range=(0, 256), features_vector_only=False)
 
     # Plot a figure with all three bar charts
     if rh is not None and gh is not None and bh is not None:
@@ -480,12 +516,20 @@ def test_bin_spatial(img_rgb):
     :param img_rgb:  Input RGB image.
     """
     cip = CoreImageProcessing()
-    features_rgb = cip.bin_spatial(img_rgb, color_space='RGB', size=(32, 32))
-    features_hsv = cip.bin_spatial(img_rgb, color_space='HSV', size=(32, 32))
-    features_luv = cip.bin_spatial(img_rgb, color_space='LUV', size=(32, 32))
-    features_hls = cip.bin_spatial(img_rgb, color_space='HLS', size=(32, 32))
-    features_yuv = cip.bin_spatial(img_rgb, color_space='YUV', size=(32, 32))
-    features_ycrcb = cip.bin_spatial(img_rgb, color_space='YCrCb', size=(32, 32))
+
+    # convert RGB image to new color space
+    img_hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
+    img_luv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LUV)
+    img_hls = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HLS)
+    img_yuv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2YUV)
+    img_ycrcb = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2YCrCb)
+
+    features_rgb = cip.bin_spatial(img_rgb, size=(32, 32))
+    features_hsv = cip.bin_spatial(img_hsv, size=(32, 32))
+    features_luv = cip.bin_spatial(img_luv, size=(32, 32))
+    features_hls = cip.bin_spatial(img_hls, size=(32, 32))
+    features_yuv = cip.bin_spatial(img_yuv, size=(32, 32))
+    features_ycrcb = cip.bin_spatial(img_ycrcb, size=(32, 32))
 
     fig, axarr = plt.subplots(2, 6, figsize=(15, 6))
     plt.subplots_adjust(left=0.03, right=0.99, top=0.98, bottom=0.05, wspace=0.2, hspace=0.2)
@@ -566,9 +610,6 @@ if __name__ == '__main__':
     print('-----------------------------------------------------------------------------')
     print(' CIP - Core Image Processing Tests')
     print('-----------------------------------------------------------------------------')
-
-    # load calibration data
-    # TODO: calib = Calibration('calib.dat')
 
     # configure core image processing
     cip = CoreImageProcessing()
