@@ -393,7 +393,7 @@ class CoreImageProcessing:
                     features.append(feature)
                     imgs_hog.append(img_hog)
             else:
-                features, imgs_hog = self.hog_features_single_channel(img[:, :, channel], orient=orient, pix_per_cell=pix_per_cell,
+                features, img_hog = self.hog_features_single_channel(img[:, :, channel], orient=orient, pix_per_cell=pix_per_cell,
                                                             cell_per_block=cell_per_block, vis=True, feature_vec=True)
             return features, img_hog
         else:
@@ -487,24 +487,29 @@ def test_color_histogram(img_rgb):
     """
 
     cip = CoreImageProcessing()
-    rh, gh, bh, bincen, feature_vec = cip.color_histogram(img_rgb, nb_bins=32, bins_range=(0, 256), features_vector_only=False)
+    rh, gh, bh, bincen, feature_vec = cip.color_histogram(img_rgb, nb_bins=64, features_vector_only=False)
 
     # Plot a figure with all three bar charts
     if rh is not None and gh is not None and bh is not None:
-        CoreImageProcessing.show_image(img_rgb)
-        fig = plt.figure(figsize=(12,3))
-        plt.subplot(131)
-        plt.bar(bincen, rh[0])
+        fig = plt.figure(figsize=(16, 3))
+        plt.subplot(151)
+        plt.imshow(img_rgb)
+        plt.title('RGB Input Image')
+        plt.subplot(152)
+        plt.bar(bincen, rh[0], color='red')
         plt.xlim(0, 256)
         plt.title('R Histogram')
-        plt.subplot(132)
-        plt.bar(bincen, gh[0])
+        plt.subplot(153)
+        plt.bar(bincen, gh[0], color='green')
         plt.xlim(0, 256)
         plt.title('G Histogram')
-        plt.subplot(133)
-        plt.bar(bincen, bh[0])
+        plt.subplot(154)
+        plt.bar(bincen, bh[0], color='blue')
         plt.xlim(0, 256)
         plt.title('B Histogram')
+        plt.subplot(155)
+        plt.plot(feature_vec)
+        plt.title('Feature Vector')
         fig.tight_layout()
     else:
         print('ERROR: color_histogram() returned None for at least one variable.', file=sys.stderr)
@@ -559,7 +564,7 @@ def test_hog(img_rgb):
     :param img_rgb:  Input RGB image.
     """
 
-    img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2YCrCb)
 
     # HOG parameters
     orient = 9
@@ -567,13 +572,40 @@ def test_hog(img_rgb):
     cell_per_block = 2
 
     cip = CoreImageProcessing()
-    features, img_hog = cip.hog_features(img_gray, orient, pix_per_cell, cell_per_block, vis=True, feature_vec=False)
+    features_all, img_hog_all = cip.hog_features(img, 'ALL', orient, pix_per_cell, cell_per_block, vis=True, feature_vec=False)
+    features_0, img_hog_0 = cip.hog_features(img, 0, orient, pix_per_cell, cell_per_block, vis=True, feature_vec=False)
+    features_1, img_hog_1 = cip.hog_features(img, 1, orient, pix_per_cell, cell_per_block, vis=True, feature_vec=False)
+    features_2, img_hog_2 = cip.hog_features(img, 2, orient, pix_per_cell, cell_per_block, vis=True, feature_vec=False)
 
-    fig, axarr = plt.subplots(1, 2)
-    axarr[0].imshow(img_gray, cmap='gray')
-    axarr[0].set_title('Original Image')
-    axarr[1].imshow(img_hog, cmap='gray')
-    axarr[1].set_title('HOG Visualization')
+    fig, axarr = plt.subplots(3, 4, figsize=(10, 7))
+    axarr[0][0].imshow(img)
+    axarr[1][0].imshow(img_hog_all, cmap='gray')
+    axarr[2][0].plot(np.ravel(features_all))
+    axarr[0][0].set_title('YCrCb (all channels)')
+    axarr[1][0].set_title('HOG Image')
+    axarr[2][0].set_title('HOG features')
+
+    axarr[0][1].imshow(img[:, :, 0], cmap='gray')
+    axarr[1][1].imshow(img_hog_0, cmap='gray')
+    axarr[2][1].plot(np.ravel(features_0))
+    axarr[0][1].set_title('Y Channel')
+    axarr[1][1].set_title('HOG Image')
+    axarr[2][1].set_title('HOG features')
+
+    axarr[0][2].imshow(img[:, :, 1], cmap='gray')
+    axarr[1][2].imshow(img_hog_1, cmap='gray')
+    axarr[2][2].plot(np.ravel(features_1))
+    axarr[0][2].set_title('Cr Channel')
+    axarr[1][2].set_title('HOG Image')
+    axarr[2][2].set_title('HOG features')
+
+    axarr[0][3].imshow(img[:, :, 2], cmap='gray')
+    axarr[1][3].imshow(img_hog_2, cmap='gray')
+    axarr[2][3].plot(np.ravel(features_2))
+    axarr[0][3].set_title('Cb Channel')
+    axarr[1][3].set_title('HOG Image')
+    axarr[2][3].set_title('HOG features')
+    plt.tight_layout()
 
 
 if __name__ == '__main__':
@@ -644,8 +676,10 @@ if __name__ == '__main__':
 
     if args.test_color_histogram:
         # test color histogram on RGB images
+        test_color_histogram(img_rgb[6])            # vehicle image
         test_color_histogram(img_rgb[7])            # vehicle image
         test_color_histogram(img_rgb[9])            # non-vehicle image
+        test_color_histogram(img_rgb[11])           # non-vehicle image
         plt.show()
 
     if args.test_bin_spatial:

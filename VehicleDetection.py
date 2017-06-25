@@ -279,6 +279,19 @@ class VehicleDetection:
         hog2 = self.cip.hog_features_single_channel(ch2, self.classifier.hog_orient, self.classifier.hog_pix_per_cell, self.classifier.hog_cell_per_block, feature_vec=False)
         hog3 = self.cip.hog_features_single_channel(ch3, self.classifier.hog_orient, self.classifier.hog_pix_per_cell, self.classifier.hog_cell_per_block, feature_vec=False)
 
+        # Debug output of HOG feature images
+        # hog4, hia = self.cip.hog_features(ctrans_tosearch, 'ALL', self.classifier.hog_orient, self.classifier.hog_pix_per_cell, self.classifier.hog_cell_per_block, feature_vec=False, vis=True)
+        #
+        # fig, ax = plt.subplots(3, 1, figsize=(10, 9))
+        # ax[0].imshow(img_tosearch)
+        # ax[0].set_title('Search Image (ROI)')
+        # ax[1].imshow(ctrans_tosearch)
+        # ax[1].set_title('Scaled down and converted to YCrCb Color Space')
+        # ax[2].imshow(hia, cmap='gray')
+        # ax[2].set_title('HOG Orientations (All Channels)')
+        # plt.tight_layout()
+        # plt.draw()
+
         for xb in range(nxsteps):
             for yb in range(nysteps):
                 ypos = yb * cells_per_step
@@ -365,6 +378,33 @@ class VehicleDetection:
                 self.bboxes_candidates_3.append(bbox)
                 self.bboxes_confidence_3.append(confidence_3[i])
 
+        # Debug output of heatmaps
+        # img_debug = np.copy(img_rgb)
+        #
+        # if len(self.bboxes_candidates) > 0 and self.overlay_bboxes_candidates_enabled:
+        #     self.draw_boxes(img_debug, self.bboxes_candidates_1, self.bboxes_confidence_1, (255, 255, 0), 1)
+        #     self.draw_boxes(img_debug, self.bboxes_candidates_2, self.bboxes_confidence_2, (0, 255, 255), 1)
+        #     self.draw_boxes(img_debug, self.bboxes_candidates_3, self.bboxes_confidence_3, (255, 0, 255), 1)
+        #
+        # fig = plt.figure(figsize=(17, 9))
+        # ax = plt.subplot(2, 1, 1)
+        # ax.imshow(img_debug)
+        # ax.set_title('Bounding Boxes')
+        # ax = plt.subplot(2, 4, 5)
+        # ax.imshow(heatmap_1, cmap='jet')
+        # ax.set_title('Heatmap FAR Range')
+        # ax = plt.subplot(2, 4, 6)
+        # ax.imshow(heatmap_2, cmap='jet')
+        # ax.set_title('Heatmap MID Range')
+        # ax = plt.subplot(2, 4, 7)
+        # ax.imshow(heatmap_3, cmap='jet')
+        # ax.set_title('Heatmap NEAR Range')
+        # ax = plt.subplot(2, 4, 8)
+        # ax.imshow(heatmap, cmap='jet')
+        # ax.set_title('Combined Heatmap')
+        # plt.tight_layout()
+        # plt.draw()
+
         # check max number of history heatmaps
         if len(self.heatmap_history) >= self.history_nb_frames:
             self.heatmap_history.pop(0)
@@ -390,10 +430,11 @@ class VehicleDetection:
 
         self.update_debug_plots()
 
-        # self.cip.show_images(figsize=(15, 4), rows=1,
-        #                      images=[self.img_rgb_overlay, self.heatmap, heatmap_thresholded],
-        #                      titles=['Input RGB Image', 'Heatmap', 'Thresholded Heatmap'],
-        #                      cmaps=['', 'hot', 'hot'])
+        # Debug output for heatmap history, thresholds and labeled data
+        # self.cip.show_images(figsize=(17, 4), rows=1,
+        #                      images=[self.img_rgb_overlay, self.heatmap, self.heatmap_thresholded, self.labels[0]],
+        #                      titles=['Bounding Boxes', 'Cumulated History Heatmap', 'Thresholded Heatmap', 'Labels'],
+        #                      cmaps=['', 'jet', 'jet', 'gray'])
         # plt.show()
 
         return self.img_rgb_overlay
@@ -430,7 +471,16 @@ def keyboard_thread():
             idx = start
             print('Selected start frame {:d}'.format(idx))
         elif key == '4':
+            start = 750
+            idx = start
+            print('Selected start frame {:d}'.format(idx))
+        elif key == '5':
             start = 900
+            idx = start
+
+            print('Selected start frame {:d}'.format(idx))
+        elif key == '6':
+            start = 1200
             idx = start
             print('Selected start frame {:d}'.format(idx))
         elif key == 's':
